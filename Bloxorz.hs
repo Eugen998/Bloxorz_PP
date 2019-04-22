@@ -56,14 +56,14 @@ data Directions = North | South | West | East
     Tip de date care va reprezenta plăcile care alcătuiesc harta și switch-urile
 -}
 
-data Cell = HardTile | SoftTile | Block | Switch | EmptySpace | WinningTile | NewLine
+data Cell = HardTile | SoftTile | Block | Switch {pos_sw :: Position, status :: Bool} | EmptySpace | WinningTile | NewLine
     deriving (Eq,Ord)
 
 instance Show Cell where
     show HardTile = [hardTile]
     show SoftTile = [softTile]
     show Block = [block]
-    show Switch = [switch]
+    show (Switch _ _) = [switch]
     show EmptySpace = [emptySpace]
     show WinningTile = [winningTile]
     show NewLine = [newLine]
@@ -75,6 +75,7 @@ instance Show Cell where
 -}
 
 data Level = LevelC {
+    l_status :: Int,
     pos :: Position ,
     level_block1 :: Position ,
     level_block2 :: Position ,
@@ -107,15 +108,16 @@ data Level = LevelC {
     concatena mesajul "Congrats! You won!\n".
     În cazul în care jocul este pierdut, se va mai concatena "Game Over\n".
 -}
---[snd a | a <- A.assocs lm , fst a == (i,j)]
+
 instance Show Level where
-    --show (LevelC p lb lm) = show $ [NewLine] ++ foldl (\acc x -> acc ++ (take (snd p + 1) $ drop (x * (snd p + 1)) (A.elems lm)) ++ [NewLine]) [] [0..fst p]
-    show (LevelC p lb1 lb2 lm _ ) = "\n" ++ (foldl (\acc1 i ->
+    show l = "\n" ++ (foldl (\acc1 i ->
         acc1 ++ (foldl (\acc2 j ->
             acc2 ++
-                if lb1 /= (i,j) && lb2 /= (i,j) then show ((A.!) lm (i,j)) else [block])
-                    "" [0..snd p]) ++ "\n")
-        "" [0..fst p])
+                if (level_block1 l) /= (i,j) && (level_block2 l) /= (i,j) then show ((A.!) (level_map l) (i,j)) else [block])
+                    "" [0..snd (pos l)]) ++ "\n")
+        "" [0..fst (pos l)])
+        ++ (if (l_status l == 1) then "Congrats! You won!\n" else "")
+        ++ (if (l_status l == 2) then "Game Over\n" else "")
 {-
     *** TODO ***
 
@@ -126,6 +128,7 @@ instance Show Level where
 
 emptyLevel :: Position -> Position -> Level
 emptyLevel maxPos blkPos = LevelC{
+    l_status = 0,
     pos = maxPos,
     level_block1 = blkPos,
     level_block2 = blkPos,
@@ -144,11 +147,11 @@ emptyLevel maxPos blkPos = LevelC{
 -}
 
 addTile :: Char -> Position -> Level -> Level
-addTile c pos (LevelC l_p l_b1 l_b2 l_map l_s)
-    | c == 'H'  = LevelC l_p l_b1 l_b2 (l_map A.// [(pos,HardTile)]) l_s
-    | c == 'S'  = LevelC l_p l_b1 l_b2 (l_map A.// [(pos,SoftTile)]) l_s
-    | c == 'W'  = LevelC l_p l_b1 l_b2 (l_map A.// [(pos,WinningTile)]) l_s
-    | otherwise = LevelC l_p l_b1 l_b2 l_map l_s
+addTile c tile_pos (LevelC l_sts l_p l_b1 l_b2 l_map l_s)
+    | c == 'H'  = LevelC l_sts l_p l_b1 l_b2 (l_map A.// [(tile_pos,HardTile)]) l_s
+    | c == 'S'  = LevelC l_sts l_p l_b1 l_b2 (l_map A.// [(tile_pos,SoftTile)]) l_s
+    | c == 'W'  = LevelC l_sts l_p l_b1 l_b2 (l_map A.// [(tile_pos,WinningTile)]) l_s
+    | otherwise = LevelC l_sts l_p l_b1 l_b2 l_map l_s
 
 {-
     *** TODO ***
@@ -159,10 +162,10 @@ addTile c pos (LevelC l_p l_b1 l_b2 l_map l_s)
     dispărea Hard Cells în momentul activării/dezactivării
     switch-ului.
 -}
-index = 0;
+
 addSwitch :: Position -> [Position] -> Level -> Level
-addSwitch pos switch_list (LevelC l_p l_b1 l_b2 l_map l_s) =
-    LevelC l_p l_b1 l_b2 (l_map A.// [(pos,Switch)]) (l_s A.// [((index + 1),switch_list)])
+addSwitch switch_pos switch_list (LevelC l_sts l_p l_b1 l_b2 l_map l_s) =
+    LevelC l_sts l_p l_b1 l_b2 (l_map A.// [(switch_pos,Switch switch_pos False)]) (l_s A.// [(((snd l_p)*(fst switch_pos - 1) + (snd switch_pos)),switch_list)])
 
 {-
     === MOVEMENT ===
@@ -177,7 +180,7 @@ addSwitch pos switch_list (LevelC l_p l_b1 l_b2 l_map l_s) =
 
 --Functie care verfica daca block-ul se afla pe harta sau a cazut
 blockOnMap :: Level -> Bool
-blockOnMap (LevelC _ l_b1 l_b2 l_map _)
+blockOnMap (LevelC _ _ l_b1 l_b2 l_map _)
     | l_b1 == l_b2 = if (l_b1 >= fst (A.bounds l_map) && l_b1 <= snd (A.bounds l_map)) then True else False
     | otherwise =
         if((l_b1 >= fst (A.bounds l_map) && l_b1 <= snd (A.bounds l_map)) && (l_b2 >= fst (A.bounds l_map) && l_b2 <= snd (A.bounds l_map)))
@@ -205,7 +208,20 @@ gameWon l
     | otherwise = False
 
 activate :: Cell -> Level -> Level
-activate = undefined
+activate sw (LevelC l_sts l_p l_b1 l_b2 l_map l_s)
+    |(status sw) == False =
+        LevelC l_sts l_p l_b1 l_b2
+        (new_map1 A.// [((pos_sw sw),new_switch1)])
+        l_s
+    | otherwise =
+        LevelC l_sts l_p l_b1 l_b2
+        (new_map2 A.// [((pos_sw sw),new_switch2)])
+        l_s
+    where
+        new_map1 = l_map A.//  [(i,HardTile) | i <- ((A.!) l_s ((snd l_p) * (fst (pos_sw sw) - 1) + (snd (pos_sw sw))))]
+        new_switch1 =  Switch (pos_sw sw) True
+        new_map2 = l_map A.//  [(i,EmptySpace) | i <- ((A.!) l_s ((snd l_p) * (fst (pos_sw sw) - 1) + (snd (pos_sw sw))))]
+        new_switch2 =  Switch (pos_sw sw) False
 
 {-
     *** TODO ***
@@ -213,9 +229,26 @@ activate = undefined
     Mișcarea blocului în una din cele 4 direcții
     Hint: Dacă jocul este deja câștigat sau pierdut, puteți lăsa nivelul neschimbat.
 -}
+moveNorth :: Level -> Level
+moveNorth l
+
+moveSouth :: Level -> Level
+moveSouth l
+
+moveEast :: Level -> Level
+moveEast l
+
+moveWest :: Level -> Level
+moveWest l
 
 move :: Directions -> Level -> Level
-move = undefined
+move d l
+    | gameWon l     == True     = l
+    | gameOver l    == True     = l
+    | d             == North    = moveNorth l
+    | d             == South    = moveSouth l
+    | d             == East     = moveEast l
+    | d             == West     = moveWest l
 
 {-
     *** TODO ***
@@ -225,7 +258,10 @@ move = undefined
 -}
 
 continueGame :: Level -> Bool
-continueGame = undefined
+continueGame l
+    | gameOver l == True = False
+    | gameWon l == True = False
+    | otherwise = True
 
 {-
     *** TODO ***
