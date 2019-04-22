@@ -159,10 +159,10 @@ addTile c pos (LevelC l_p l_b1 l_b2 l_map l_s)
     dispărea Hard Cells în momentul activării/dezactivării
     switch-ului.
 -}
-
+index = 0;
 addSwitch :: Position -> [Position] -> Level -> Level
 addSwitch pos switch_list (LevelC l_p l_b1 l_b2 l_map l_s) =
-    LevelC l_p l_b1 l_b2 (l_map A.// [(pos,Switch)]) (l_s A.// [(0,switch_list)])
+    LevelC l_p l_b1 l_b2 (l_map A.// [(pos,Switch)]) (l_s A.// [((index + 1),switch_list)])
 
 {-
     === MOVEMENT ===
@@ -174,6 +174,35 @@ addSwitch pos switch_list (LevelC l_p l_b1 l_b2 l_map l_s) =
     Activate va verifica dacă mutarea blocului va activa o mecanică specifică.
     În funcție de mecanica activată, vor avea loc modificări pe hartă.
 -}
+
+--Functie care verfica daca block-ul se afla pe harta sau a cazut
+blockOnMap :: Level -> Bool
+blockOnMap (LevelC _ l_b1 l_b2 l_map _)
+    | l_b1 == l_b2 = if (l_b1 >= fst (A.bounds l_map) && l_b1 <= snd (A.bounds l_map)) then True else False
+    | otherwise =
+        if((l_b1 >= fst (A.bounds l_map) && l_b1 <= snd (A.bounds l_map)) && (l_b2 >= fst (A.bounds l_map) && l_b2 <= snd (A.bounds l_map)))
+            then True
+            else False
+
+gameOver :: Level -> Bool
+gameOver l
+    | blockOnMap l == False = True
+    | (level_block1 l) == (level_block2 l) =
+        if (((A.!) (level_map l) (level_block1 l)) == EmptySpace || ((A.!) (level_map l) (level_block1 l)) == SoftTile)
+            then True
+            else False
+    | otherwise =
+        if (((A.!) (level_map l) (level_block1 l)) == EmptySpace || ((A.!) (level_map l) (level_block2 l)) == EmptySpace)
+            then True
+            else False
+
+gameWon :: Level -> Bool
+gameWon l
+    | gameOver l == False =
+        if(((level_block1 l) == (level_block2 l)) && ((A.!) (level_map l) (level_block1 l) == WinningTile))
+            then True
+            else False
+    | otherwise = False
 
 activate :: Cell -> Level -> Level
 activate = undefined
