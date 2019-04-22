@@ -33,6 +33,9 @@ emptySpace = ' '
 winningTile :: Char
 winningTile = '*'
 
+newLine :: Char
+newLine = '\n'
+
 {-
     Sinonim de tip de date pentru reprezetarea unei perechi (int, int)
     care va reține coordonatele de pe tabla jocului
@@ -53,7 +56,7 @@ data Directions = North | South | West | East
     Tip de date care va reprezenta plăcile care alcătuiesc harta și switch-urile
 -}
 
-data Cell = HardTile | SoftTile | Block | Switch | EmptySpace | WinningTile
+data Cell = HardTile | SoftTile | Block | Switch | EmptySpace | WinningTile | NewLine
     deriving (Eq,Ord)
 
 instance Show Cell where
@@ -63,6 +66,7 @@ instance Show Cell where
     show Switch = [switch]
     show EmptySpace = [emptySpace]
     show WinningTile = [winningTile]
+    show NewLine = [newLine]
 
 {-
     *** TODO ***
@@ -70,7 +74,13 @@ instance Show Cell where
     Tip de date pentru reprezentarea nivelului curent
 -}
 
-data Level = UndefinedLevel
+data Level = LevelC {
+    pos :: Position ,
+    level_block1 :: Position ,
+    level_block2 :: Position ,
+    level_map :: A.Array Position Cell ,
+    switches :: A.Array Int [Position]
+}
     deriving (Eq, Ord)
 
 {-
@@ -97,10 +107,15 @@ data Level = UndefinedLevel
     concatena mesajul "Congrats! You won!\n".
     În cazul în care jocul este pierdut, se va mai concatena "Game Over\n".
 -}
-
+--[snd a | a <- A.assocs lm , fst a == (i,j)]
 instance Show Level where
-    show = undefined
-
+    --show (LevelC p lb lm) = show $ [NewLine] ++ foldl (\acc x -> acc ++ (take (snd p + 1) $ drop (x * (snd p + 1)) (A.elems lm)) ++ [NewLine]) [] [0..fst p]
+    show (LevelC p lb1 lb2 lm _ ) = "\n" ++ (foldl (\acc1 i ->
+        acc1 ++ (foldl (\acc2 j ->
+            acc2 ++
+                if lb1 /= (i,j) && lb2 /= (i,j) then show ((A.!) lm (i,j)) else [block])
+                    "" [0..snd p]) ++ "\n")
+        "" [0..fst p])
 {-
     *** TODO ***
 
@@ -110,7 +125,13 @@ instance Show Level where
 -}
 
 emptyLevel :: Position -> Position -> Level
-emptyLevel = undefined
+emptyLevel maxPos blkPos = LevelC{
+    pos = maxPos,
+    level_block1 = blkPos,
+    level_block2 = blkPos,
+    level_map = A.array ((0,0),maxPos) ([((x,y), EmptySpace) | x <- [0..fst maxPos], y <- [0..snd maxPos]]) ,
+    switches = A.array (0,((fst maxPos) * (snd maxPos))) ([(i,[]) | i <- [0..((fst maxPos) * (snd maxPos))]])
+}
 
 {-
     *** TODO ***
@@ -123,7 +144,11 @@ emptyLevel = undefined
 -}
 
 addTile :: Char -> Position -> Level -> Level
-addTile = undefined
+addTile c pos (LevelC l_p l_b1 l_b2 l_map l_s)
+    | c == 'H'  = LevelC l_p l_b1 l_b2 (l_map A.// [(pos,HardTile)]) l_s
+    | c == 'S'  = LevelC l_p l_b1 l_b2 (l_map A.// [(pos,SoftTile)]) l_s
+    | c == 'W'  = LevelC l_p l_b1 l_b2 (l_map A.// [(pos,WinningTile)]) l_s
+    | otherwise = LevelC l_p l_b1 l_b2 l_map l_s
 
 {-
     *** TODO ***
@@ -136,7 +161,8 @@ addTile = undefined
 -}
 
 addSwitch :: Position -> [Position] -> Level -> Level
-addSwitch = undefined
+addSwitch pos switch_list (LevelC l_p l_b1 l_b2 l_map l_s) =
+    LevelC l_p l_b1 l_b2 (l_map A.// [(pos,Switch)]) (l_s A.// [(0,switch_list)])
 
 {-
     === MOVEMENT ===
