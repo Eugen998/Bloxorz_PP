@@ -116,8 +116,8 @@ instance Show Level where
                 if (level_block1 l) /= (i,j) && (level_block2 l) /= (i,j) then show ((A.!) (level_map l) (i,j)) else [block])
                     "" [0..snd (pos l)]) ++ "\n")
         "" [0..fst (pos l)])
-        ++ (if (l_status l == 1) then "Congrats! You won!\n" else "")
-        ++ (if (l_status l == 2) then "Game Over\n" else "")
+        ++ (if (gameWon l && (l_status l /= 0)) then "Congrats! You won!\n" else "")
+        ++ (if (gameOver l && (l_status l /= 0)) then "Game Over\n" else "")
 {-
     *** TODO ***
 
@@ -207,8 +207,13 @@ gameWon l
             else False
     | otherwise = False
 
+checkIfSwitch :: Cell -> Bool
+checkIfSwitch (Switch _ _) = True
+checkIfSwitch _ = False
+
 activate :: Cell -> Level -> Level
 activate sw (LevelC l_sts l_p l_b1 l_b2 l_map l_s)
+    |checkIfSwitch sw == False = (LevelC l_sts l_p l_b1 l_b2 l_map l_s)
     |(status sw) == False =
         LevelC l_sts l_p l_b1 l_b2
         (new_map1 A.// [((pos_sw sw),new_switch1)])
@@ -229,26 +234,46 @@ activate sw (LevelC l_sts l_p l_b1 l_b2 l_map l_s)
     Mișcarea blocului în una din cele 4 direcții
     Hint: Dacă jocul este deja câștigat sau pierdut, puteți lăsa nivelul neschimbat.
 -}
+step :: Level -> Level
+step l = activate ((A.!) (level_map l) (level_block1 l)) aux
+    where aux = activate ((A.!) (level_map l) (level_block2 l)) l
+
 moveNorth :: Level -> Level
-moveNorth l
+moveNorth (LevelC check_status l_p l_b1 l_b2 l_map l_s)
+    | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 2),(snd l_b2)) l_map l_s)
+    | (fst l_b1) == (fst l_b2) = step(LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 1),(snd l_b2)) l_map l_s)
+    | otherwise = step (LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 2),(snd l_b2)) l_map l_s)
+        where check_status = 13
 
 moveSouth :: Level -> Level
-moveSouth l
+moveSouth (LevelC check_status l_p l_b1 l_b2 l_map l_s)
+    | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 2),(snd l_b2)) l_map l_s)
+    | (fst l_b1) == (fst l_b2) = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 1),(snd l_b2)) l_map l_s)
+    | otherwise = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 2),(snd l_b2)) l_map l_s)
+        where check_status = 13
 
 moveEast :: Level -> Level
-moveEast l
+moveEast (LevelC check_status l_p l_b1 l_b2 l_map l_s)
+    | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 1)) ((fst l_b2),(snd l_b2 + 2)) l_map l_s)
+    | (fst l_b1) == (fst l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 2)) ((fst l_b2),(snd l_b2 + 1)) l_map l_s)
+    | otherwise = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 1)) ((fst l_b2),(snd l_b2 + 1)) l_map l_s)
+        where check_status = 13
+
 
 moveWest :: Level -> Level
-moveWest l
+moveWest (LevelC check_status l_p l_b1 l_b2 l_map l_s)
+    | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 1)) ((fst l_b2),(snd l_b2 - 2)) l_map l_s)
+    | (fst l_b1) == (fst l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 2)) ((fst l_b2),(snd l_b2 - 1)) l_map l_s)
+    | otherwise = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 1)) ((fst l_b2),(snd l_b2 - 1)) l_map l_s)
+        where check_status = 13
 
 move :: Directions -> Level -> Level
 move d l
-    | gameWon l     == True     = l
-    | gameOver l    == True     = l
     | d             == North    = moveNorth l
     | d             == South    = moveSouth l
     | d             == East     = moveEast l
     | d             == West     = moveWest l
+    | otherwise                 = l
 
 {-
     *** TODO ***
@@ -274,9 +299,9 @@ continueGame l
 -}
 
 instance ProblemState Level Directions where
-    successors = undefined
+    successors l = [(dir,(move dir l)) | dir <- [North,South,West,East], (gameOver (move dir l) /= True)]
 
-    isGoal = undefined
+    isGoal l = gameWon l
 
     -- Doar petru BONUS
     -- heuristic = undefined
