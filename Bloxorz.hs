@@ -241,21 +241,24 @@ step l = activate ((A.!) (level_map l) (level_block1 l)) aux
 moveNorth :: Level -> Level
 moveNorth (LevelC check_status l_p l_b1 l_b2 l_map l_s)
     | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 2),(snd l_b2)) l_map l_s)
-    | (fst l_b1) == (fst l_b2) = step(LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 1),(snd l_b2)) l_map l_s)
-    | otherwise = step (LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 2),(snd l_b2)) l_map l_s)
+    | (snd l_b1 == snd l_b2) && (fst l_b1 < fst l_b2) = step (LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 2),(snd l_b2)) l_map l_s)
+    | (snd l_b1 == snd l_b2) && (fst l_b1 > fst l_b2) = step (LevelC check_status l_p ((fst l_b1 - 2),(snd l_b1)) ((fst l_b2 - 1),(snd l_b2)) l_map l_s)
+    | otherwise = step(LevelC check_status l_p ((fst l_b1 - 1),(snd l_b1)) ((fst l_b2 - 1),(snd l_b2)) l_map l_s)
         where check_status = 13
 
 moveSouth :: Level -> Level
 moveSouth (LevelC check_status l_p l_b1 l_b2 l_map l_s)
     | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 2),(snd l_b2)) l_map l_s)
-    | (fst l_b1) == (fst l_b2) = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 1),(snd l_b2)) l_map l_s)
-    | otherwise = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 2),(snd l_b2)) l_map l_s)
+    | (snd l_b1 == snd l_b2) && (fst l_b1 < fst l_b2) = step (LevelC check_status l_p ((fst l_b1 + 2),(snd l_b1)) ((fst l_b2 + 1),(snd l_b2)) l_map l_s)
+    | (snd l_b1 == snd l_b2) && (fst l_b1 > fst l_b2) = step (LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 2),(snd l_b2)) l_map l_s)
+    | otherwise = step(LevelC check_status l_p ((fst l_b1 + 1),(snd l_b1)) ((fst l_b2 + 1),(snd l_b2)) l_map l_s)
         where check_status = 13
 
 moveEast :: Level -> Level
 moveEast (LevelC check_status l_p l_b1 l_b2 l_map l_s)
     | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 1)) ((fst l_b2),(snd l_b2 + 2)) l_map l_s)
-    | (fst l_b1) == (fst l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 2)) ((fst l_b2),(snd l_b2 + 1)) l_map l_s)
+    | (fst l_b1 == fst l_b2) && (snd l_b1 < snd l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 2)) ((fst l_b2),(snd l_b2 + 1)) l_map l_s)
+    | (fst l_b1 == fst l_b2) && (snd l_b1 > snd l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 1)) ((fst l_b2),(snd l_b2 + 2)) l_map l_s)
     | otherwise = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 + 1)) ((fst l_b2),(snd l_b2 + 1)) l_map l_s)
         where check_status = 13
 
@@ -263,7 +266,8 @@ moveEast (LevelC check_status l_p l_b1 l_b2 l_map l_s)
 moveWest :: Level -> Level
 moveWest (LevelC check_status l_p l_b1 l_b2 l_map l_s)
     | l_b1 == l_b2 = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 1)) ((fst l_b2),(snd l_b2 - 2)) l_map l_s)
-    | (fst l_b1) == (fst l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 2)) ((fst l_b2),(snd l_b2 - 1)) l_map l_s)
+    | (fst l_b1 == fst l_b2) && (snd l_b1 < snd l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 1)) ((fst l_b2),(snd l_b2 - 2)) l_map l_s)
+    | (fst l_b1 == fst l_b2) && (snd l_b1 > snd l_b2) = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 2)) ((fst l_b2),(snd l_b2 - 1)) l_map l_s)
     | otherwise = step (LevelC check_status l_p ((fst l_b1),(snd l_b1 - 1)) ((fst l_b2),(snd l_b2 - 1)) l_map l_s)
         where check_status = 13
 
